@@ -1,6 +1,10 @@
 # Flowlink Unmanaged Workload Maker
 
-This script is used to create unmanaged workloads in Illumio's Policy Compute Engine (PCE) based on a list of IP addresses.
+Flowlink is the Illumio Core PCE Flow Collector. The flow collector sends flows
+to the PCE and injects flows for workloads that are either managed or unmanaged
+on the PCE.
+This script automatically adds UMWL based on the home networks of the user.
+
 
 ## Prerequisites
 
@@ -9,18 +13,19 @@ This script is used to create unmanaged workloads in Illumio's Policy Compute En
 
 ## Installation
 
-1. Clone the repository:
-    ```
-    git clone https://github.com/yourusername/yourrepository.git
-    ```
-2. Navigate to the project directory:
+1. Navigate to the project directory:
     ```
     cd yourrepository
     ```
-3. Install the required Python packages:
+2. Install the required Python packages:
     ```
     pip install -r requirements.txt
     ```
+3. Get API keys from PCE
+
+Login to your PCE, create a service account or API key via user profile
+
+4. Run program
 
 ## Usage
 
@@ -32,7 +37,7 @@ The script requires several command-line arguments or environment variables:
 - `--api_user` or `PCE_API_USER`: The API user.
 - `--api_key` or `PCE_API_KEY`: The API key.
 - `--verbose`: Enable verbose logging.
-- `--networks`: A comma-separated list of networks.
+- `--networks`: A comma-separated list of networks. (default: RFC1918 networks)
 - `--simulate`: Simulate workload creation without actually creating workloads.
 
 To run the script, use the following command:
