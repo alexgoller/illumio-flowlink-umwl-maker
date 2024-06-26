@@ -3,7 +3,9 @@
 Flowlink is the Illumio Core PCE Flow Collector. The flow collector sends flows
 to the PCE and injects flows for workloads that are either managed or unmanaged
 on the PCE.
-This script automatically adds UMWL based on the home networks of the user.
+This script automatically adds UMWL based on the home networks of the user following
+the flowlink log file and automatically creating workloads for IPs found in given
+networks.
 
 
 ## Prerequisites
@@ -39,6 +41,7 @@ The script requires several command-line arguments or environment variables:
 - `--verbose`: Enable verbose logging.
 - `--networks`: A comma-separated list of networks. (default: RFC1918 networks)
 - `--simulate`: Simulate workload creation without actually creating workloads.
+- `--notail`: Simulate workload creation without actually creating workloads.
 
 To run the script, use the following command:
 

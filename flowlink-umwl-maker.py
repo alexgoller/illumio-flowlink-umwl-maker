@@ -13,6 +13,7 @@ import socket
 import sys
 import ipaddress
 import time
+import select
 
 from illumio import *
 
@@ -50,12 +51,19 @@ def find_internal_ips(log_file_path, internal_networks):
     # keep log file open and wait for new lines to appear
     with open(log_file_path, 'r') as file:
         logging.info("Reading file: {}".format(log_file_path))
-        file.seek(0, 2)  # Move to the end of the file
+        logging.info("Notail: {}".format(notail))
+        if notail == False:
+            file.seek(0, 2)  # Move to the end of the file
+
         while True:
             # be sure that the line matches : 
             # 2024-03-30T19:29:18.027820424Z 2024-03-30T19:29:18.027524+00:00 ***** Following new IP addresses found in flows: [170.72.41.92 184.185.103.69 23.218.217.180 82.64.102.158 217.20.50.39 193.122.61.43] 
 
             line = file.readline().rstrip() 
+            if line == "":
+                logging.debug("No new content in file, sleeping 10s.")
+                time.sleep(10)
+                continue
 
             if "Following new IP addresses found in flows:" in line:
                 workloads_created = 0
@@ -85,9 +93,7 @@ def find_internal_ips(log_file_path, internal_networks):
                         # Ignore IP addresses that are not valid
                         continue
             else:
-                logging.debug("No new IP addresses found in flows")
-
-            time.sleep(10)  # Sleep for a short duration before checking for new lines
+                logging.debug("Line does not contain IP addresses")
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='PCE Demo Host Credentials')
@@ -99,7 +105,8 @@ def parse_arguments():
     parser.add_argument('--verbose', help='Be more verbose (logging)')
     parser.add_argument('--networks', default='192.168.0.0/16,172.16.0.0/12,10.0.0.0/8', help = 'Company networks listed comma separated')
     parser.add_argument('--log_file', help = 'Path to the log file')
-    parser.add_argument('--simulate', help = 'Simulate the workload creation', default=False)
+    parser.add_argument('--simulate', action='store_true', help = 'Simulate the workload creation', default=False)
+    parser.add_argument('--notail', action='store_true', help = 'Do not tail the log file')
     parser.add_argument('--max-workloads', help = 'Maximum number of workloads to create per run, 0 means unlimited', default=0)
     return parser.parse_args()
 
@@ -117,6 +124,7 @@ if __name__ == "__main__":
     verbose = args.verbose
     networks_string = args.networks
     simulate = args.simulate
+    notail = args.notail
     max_workloads = args.max_workloads
 
     if not pce_host:
