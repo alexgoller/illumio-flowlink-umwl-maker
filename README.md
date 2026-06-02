@@ -1,54 +1,65 @@
 # Flowlink Unmanaged Workload Maker
 
-Flowlink is the Illumio Core PCE Flow Collector. The flow collector sends flows
-to the PCE and injects flows for workloads that are either managed or unmanaged
-on the PCE.
-This script automatically adds UMWL based on the home networks of the user following
-the flowlink log file and automatically creating workloads for IPs found in given
-networks.
+Automatically creates Unmanaged Workloads (UMWLs) on the Illumio PCE based on IP addresses discovered in FlowLink log files.
 
+[FlowLink](https://docs.illumio.com) is the Illumio Core PCE Flow Collector. It sends flows to the PCE and injects flows for managed and unmanaged workloads. This script monitors the FlowLink log file and automatically creates unmanaged workloads for any new IP addresses found within configured networks.
 
 ## Prerequisites
 
-- Python 3.6 or higher
-- pip (Python package installer)
+- Python 3.6+
+- An Illumio PCE with API access (service account or API key)
 
 ## Installation
 
-1. Navigate to the project directory:
+1. Clone the repository and navigate to the project directory:
+    ```bash
+    cd illumio-flowlink-umwl-maker
     ```
-    cd yourrepository
-    ```
-2. Install the required Python packages:
-    ```
+2. Install dependencies:
+    ```bash
     pip install -r requirements.txt
     ```
-3. Get API keys from PCE
 
-Login to your PCE, create a service account or API key via user profile
+## Configuration
 
-4. Run program
+The script can be configured via command-line arguments or environment variables:
+
+| Argument | Environment Variable | Default | Description |
+|---|---|---|---|
+| `--pce_host` | `PCE_HOST` | `poc1.illum.io` | PCE hostname |
+| `--pce_port` | `PCE_PORT` | `443` | PCE TCP port |
+| `--org_id` | `PCE_ORG` | `1` | PCE organization ID |
+| `--api_user` | `PCE_API_USER` | *required* | API user / service account |
+| `--api_key` | `PCE_API_KEY` | *required* | API key / secret |
+| `--log_file` | | *required* | Path to the FlowLink log file to monitor |
+| `--networks` | | `192.168.0.0/16,172.16.0.0/12,10.0.0.0/8` | Comma-separated list of networks to match |
+| `--max-workloads` | | `0` (unlimited) | Max workloads to create per batch of discovered IPs |
+| `--simulate` | | `false` | Simulate workload creation without making changes |
+| `--notail` | | `false` | Read the log file from the beginning instead of tailing |
+| `--verbose` | | `false` | Enable debug-level logging |
 
 ## Usage
 
-The script requires several command-line arguments or environment variables:
+```bash
+python flowlink-umwl-maker.py \
+  --pce_host your_pce_host \
+  --api_user your_api_user \
+  --api_key your_api_key \
+  --log_file /var/log/flowlink.log \
+  --networks 10.0.0.0/8,172.16.0.0/12
+```
 
-- `--pce_host` or `PCE_HOST`: The host of the PCE.
-- `--pce_port` or `PCE_PORT`: The port of the PCE.
-- `--org_id` or `ORG_ID`: The organization ID.
-- `--api_user` or `PCE_API_USER`: The API user.
-- `--api_key` or `PCE_API_KEY`: The API key.
-- `--verbose`: Enable verbose logging.
-- `--networks`: A comma-separated list of networks. (default: RFC1918 networks)
-- `--simulate`: Simulate workload creation without actually creating workloads.
-- `--notail`: Simulate workload creation without actually creating workloads.
+By default the script tails the log file (starts reading from the end and waits for new entries). Use `--notail` to process the entire file from the beginning.
 
-To run the script, use the following command:
+Use `--simulate` to preview which workloads would be created without actually making API calls to the PCE.
 
-  python flowlink-umwl-maker.py --pce_host your_pce_host --api_user your_api_user --api_key your_api_key --networks your_networks
+## How It Works
 
-
-Replace `your_pce_host`, `your_api_user`, `your_api_key`, and `your_networks` with your actual PCE host, API user, API key, and networks respectively.
+1. Connects to the Illumio PCE using the provided API credentials.
+2. Opens the FlowLink log file and watches for lines containing `"Following new IP addresses found in flows:"`.
+3. Extracts IP addresses from matching log lines and checks if they fall within the configured networks.
+4. For each matching IP, queries the PCE to see if a workload already exists.
+5. If no workload exists, creates an unmanaged workload named `FlowLink-<IP>`.
 
 ## License
 
