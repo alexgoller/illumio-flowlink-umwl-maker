@@ -1,66 +1,120 @@
-# Flowlink Unmanaged Workload Maker
+# FlowLink Unmanaged Workload Maker
 
-Automatically creates Unmanaged Workloads (UMWLs) on the Illumio PCE based on IP addresses discovered in FlowLink log files.
+> Automatically create Unmanaged Workloads (UMWLs) on the Illumio PCE from IP addresses discovered in FlowLink logs.
 
-[FlowLink](https://docs.illumio.com) is the Illumio Core PCE Flow Collector. It sends flows to the PCE and injects flows for managed and unmanaged workloads. This script monitors the FlowLink log file and automatically creates unmanaged workloads for any new IP addresses found within configured networks.
+FlowLink is the Illumio Core PCE Flow Collector. It sends network flows to the PCE for both managed and unmanaged workloads. This script **monitors FlowLink log files** in real time and automatically creates unmanaged workloads for new IP addresses found within your configured networks.
+
+---
 
 ## Prerequisites
 
-- Python 3.6+
-- An Illumio PCE with API access (service account or API key)
+- **Python 3.6+**
+- **Illumio PCE** with API access (service account or API key)
 
-## Installation
+## Quick Start
 
-1. Clone the repository and navigate to the project directory:
-    ```bash
-    cd illumio-flowlink-umwl-maker
-    ```
-2. Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
 
-## Configuration
+# 2. Run (with environment variables)
+export PCE_HOST=pce.example.com
+export PCE_API_USER=api_xxxxxxxxx
+export PCE_API_KEY=your_api_secret
 
-The script can be configured via command-line arguments or environment variables:
+python flowlink-umwl-maker.py --log_file /var/log/flowlink.log
+```
 
-| Argument | Environment Variable | Default | Description |
-|---|---|---|---|
-| `--pce_host` | `PCE_HOST` | `poc1.illum.io` | PCE hostname |
-| `--pce_port` | `PCE_PORT` | `443` | PCE TCP port |
-| `--org_id` | `PCE_ORG` | `1` | PCE organization ID |
-| `--api_user` | `PCE_API_USER` | *required* | API user / service account |
-| `--api_key` | `PCE_API_KEY` | *required* | API key / secret |
-| `--log_file` | | *required* | Path to the FlowLink log file to monitor |
-| `--networks` | | `192.168.0.0/16,172.16.0.0/12,10.0.0.0/8` | Comma-separated list of networks to match |
-| `--max-workloads` | | `0` (unlimited) | Max workloads to create per batch of discovered IPs |
-| `--simulate` | | `false` | Simulate workload creation without making changes |
-| `--notail` | | `false` | Read the log file from the beginning instead of tailing |
-| `--verbose` | | `false` | Enable debug-level logging |
-
-## Usage
+Or pass everything via flags:
 
 ```bash
 python flowlink-umwl-maker.py \
-  --pce_host your_pce_host \
-  --api_user your_api_user \
-  --api_key your_api_key \
+  --pce_host pce.example.com \
+  --api_user api_xxxxxxxxx \
+  --api_key your_api_secret \
   --log_file /var/log/flowlink.log \
   --networks 10.0.0.0/8,172.16.0.0/12
 ```
 
-By default the script tails the log file (starts reading from the end and waits for new entries). Use `--notail` to process the entire file from the beginning.
+---
 
-Use `--simulate` to preview which workloads would be created without actually making API calls to the PCE.
+## Configuration
+
+All options can be set via **command-line flags** or **environment variables**.
+
+### Connection
+
+| Flag | Env Variable | Default | Description |
+|:-----|:-------------|:--------|:------------|
+| `--pce_host` | `PCE_HOST` | `poc1.illum.io` | PCE hostname |
+| `--pce_port` | `PCE_PORT` | `443` | PCE TCP port |
+| `--org_id` | `PCE_ORG` | `1` | Organization ID |
+| `--api_user` | `PCE_API_USER` | **required** | API user / service account |
+| `--api_key` | `PCE_API_KEY` | **required** | API key / secret |
+
+### Behavior
+
+| Flag | Default | Description |
+|:-----|:--------|:------------|
+| `--log_file` | **required** | Path to the FlowLink log file |
+| `--networks` | `192.168.0.0/16,172.16.0.0/12,10.0.0.0/8` | Comma-separated list of internal networks |
+| `--max-workloads` | `0` (unlimited) | Max workloads to create per batch of discovered IPs |
+| `--simulate` | `false` | Preview workload creation without making API calls |
+| `--notail` | `false` | Read the log file from the beginning instead of tailing |
+| `--verbose` | `false` | Enable debug-level logging |
+
+---
 
 ## How It Works
 
-1. Connects to the Illumio PCE using the provided API credentials.
-2. Opens the FlowLink log file and watches for lines containing `"Following new IP addresses found in flows:"`.
-3. Extracts IP addresses from matching log lines and checks if they fall within the configured networks.
-4. For each matching IP, queries the PCE to see if a workload already exists.
-5. If no workload exists, creates an unmanaged workload named `FlowLink-<IP>`.
+```
+FlowLink Log ──> Script ──> Illumio PCE API
+                   │
+                   ├─ Parse IPs from log lines
+                   ├─ Filter by configured networks
+                   ├─ Check if workload exists on PCE
+                   └─ Create UMWL if missing
+```
+
+1. Connects to the Illumio PCE and validates API credentials.
+2. Opens the FlowLink log file and tails it for new entries (use `--notail` to read from the beginning).
+3. Watches for lines containing **"Following new IP addresses found in flows:"**.
+4. Extracts IP addresses and filters them against the configured `--networks`.
+5. For each matching IP, checks the PCE for an existing workload.
+6. If none exists, creates an unmanaged workload named **`FlowLink-<IP>`**.
+
+The script runs continuously until stopped with `Ctrl+C`.
+
+---
+
+## Examples
+
+**Dry run** -- see what would be created without touching the PCE:
+
+```bash
+python flowlink-umwl-maker.py \
+  --log_file /var/log/flowlink.log \
+  --simulate --notail --verbose
+```
+
+**Limit batch size** -- create at most 50 workloads per log line:
+
+```bash
+python flowlink-umwl-maker.py \
+  --log_file /var/log/flowlink.log \
+  --max-workloads 50
+```
+
+**Custom networks** -- only match IPs in specific subnets:
+
+```bash
+python flowlink-umwl-maker.py \
+  --log_file /var/log/flowlink.log \
+  --networks 10.1.0.0/16,10.2.0.0/16
+```
+
+---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+MIT
