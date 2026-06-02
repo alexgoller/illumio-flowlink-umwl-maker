@@ -8,8 +8,10 @@ import ipaddress
 import time
 import re
 
-import requests
-from illumio import *
+from illumio import PolicyComputeEngine, Workload, Interface
+
+
+MAX_LINE_LENGTH = 1_000_000  # 1MB max line length to prevent memory exhaustion
 
 
 def ip_in_networks(ip, networks):
@@ -48,7 +50,7 @@ def find_internal_ips(pce, log_file_path, internal_networks, simulate, notail, m
             file.seek(0, 2)  # Move to the end of the file
 
         while True:
-            line = file.readline().rstrip()
+            line = file.readline(MAX_LINE_LENGTH).rstrip()
             if line == "":
                 logging.debug("No new content in file, sleeping 10s.")
                 time.sleep(10)
@@ -127,7 +129,6 @@ if __name__ == "__main__":
     logging.debug("PCE Host: %s", args.pce_host)
     logging.debug("PCE Port: %s", args.pce_port)
     logging.debug("Organization ID: %s", args.org_id)
-    logging.debug("Username: %s", args.api_user)
 
     pce = PolicyComputeEngine(args.pce_host, port=args.pce_port, org_id=args.org_id)
     pce.set_credentials(args.api_user, args.api_key)

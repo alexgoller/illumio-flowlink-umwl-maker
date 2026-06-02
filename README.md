@@ -115,6 +115,13 @@ python flowlink-umwl-maker.py \
 
 ---
 
+## Security Notes
+
+- **Prefer environment variables** for `PCE_API_USER` and `PCE_API_KEY`. Command-line flags are visible to other users on the system via `ps`.
+- **Log file trust** — the script trusts the FlowLink log file contents. Ensure the log file has restrictive permissions so it cannot be written to by untrusted users.
+
+---
+
 ## License
 
 MIT
